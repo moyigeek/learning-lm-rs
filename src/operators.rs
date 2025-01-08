@@ -71,19 +71,40 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
 }
 
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
-    todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
+    assert_eq!(x.shape(), y.shape(), "Input and output tensors must have the same shape");
+    assert_eq!(x.shape().last(), w.shape().last(), "Weight tensor must match the last dimension of input tensor");
+
+    let x_data = x.data();
+    let w_data = w.data();
+    let y_data = unsafe { y.data_mut() };
+
+    let n = *x.shape().last().unwrap();
+    let batch_size = x.size() / n;
+
+    for i in 0..batch_size {
+        let start = i * n;
+        let end = start + n;
+
+        let sum_of_squares: f32 = x_data[start..end].iter().map(|&val| val * val).sum();
+        let rms = (sum_of_squares / n as f32 + epsilon).sqrt();
+
+        for j in 0..n {
+            y_data[start + j] = (x_data[start + j] / rms) * w_data[j];
+        }
+    }
 }
 
 // y = silu(x) * y
 // hint: this is an element-wise operation
 pub fn swiglu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
-    // let len = y.size();
-    // assert!(len == x.size());
+    let len = y.size();
+    assert!(len == x.size());
 
-    // let _y = unsafe { y.data_mut() };
-    // let _x = x.data();
-
-    todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考")
+    let _y = unsafe { y.data_mut() };
+    let _x = x.data();
+    for i in 0..len {
+        _y[i] *= _x[i] / (1. + (-_x[i]).exp());
+    }
 }
 
 // C = beta * C + alpha * A @ B^T
