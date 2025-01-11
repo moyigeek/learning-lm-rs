@@ -1,13 +1,14 @@
 use std::fs::File;
 use std::vec;
 
-use crate::config::LlamaConfigJson;
+use crate::{config::LlamaConfigJson, operators::swiglu};
 use crate::kvcache::KVCache;
 use crate::operators as OP;
 use crate::params::LLamaParams;
 use crate::tensor::Tensor;
 use safetensors::SafeTensors;
 use std::path::Path;
+use crate::operators::{rms_norm, matmul_transb};
 pub struct Llama<T> {
     vocab: usize,           // vocab size
     n_layers: usize,        // number of layers
@@ -167,7 +168,11 @@ fn mlp(
     rms_w: &Tensor<f32>,
     eps: f32,
 ) {
-    todo!("Implement mlp");
+    rms_norm(hidden_states, residual, rms_w, eps);
+    matmul_transb(gate, 0., hidden_states, w_gate, 1.0);
+    matmul_transb(up, 0., hidden_states, w_up, 1.0);
+    swiglu(up,&gate);
+    matmul_transb(residual, 1.0, &up, w_down, 1.0);
 }
 
 #[test]
